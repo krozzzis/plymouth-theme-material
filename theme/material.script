@@ -1,34 +1,23 @@
 # Material You Plymouth theme — cryptsetup password prompt matching DMS
 # Static matugen colors (dark): primary #e5c36c, surface #16130b, container #231f17, onSurface #eae1d4
-# InterVariable, rounded 12, blur-like dark bg
+# InterVariable, rounded 12, minimal 4px progress, no border on entry, logo at bottom
 
 Window.SetBackgroundTopColor(0.086, 0.074, 0.043);
 Window.SetBackgroundBottomColor(0.121, 0.105, 0.074);
 
 logo.image = Image("special://logo");
 logo.sprite = Sprite(logo.image);
-logo.opacity_angle = 0;
 
-# Logo at bottom (as before, not top) — WatermarkVerticalAlignment .96
+# Logo at bottom (Watermark .96) — not overlapping dialog
 fun refresh_callback () {
-  if (status == "normal") {
-    logo.opacity_angle += ((2 * 3.14) / 50) * 0.5;
-    min_opacity = 0.3;
-    opacity = (Math.Cos(logo.opacity_angle) + 1) / 2;
-    opacity *= 1 - min_opacity;
-    opacity += min_opacity;
-    logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
-    logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
-    logo.sprite.SetOpacity(opacity);
-  } else {
-    logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
-    logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
-    logo.sprite.SetOpacity(1);
-  }
+  logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
+  logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
+  logo.sprite.SetOpacity(1);
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
 status = "normal";
+dialog_shown = false;
 
 fun dialog_setup() {
   local.box; local.lock; local.entry;
@@ -41,8 +30,8 @@ fun dialog_setup() {
   box.z = 10000;
   box.sprite.SetPosition(box.x, box.y, box.z);
   lock.sprite = Sprite(lock.image);
-  lock.x = box.x + 60;
-  lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2 - 10;
+  lock.x = box.x + 50;
+  lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2 - 8;
   lock.z = box.z + 1;
   lock.sprite.SetPosition(lock.x, lock.y, lock.z);
   entry.sprite = Sprite(entry.image);
@@ -55,12 +44,14 @@ fun dialog_setup() {
   global.dialog.entry = entry;
   global.dialog.bullet_image = Image("bullet.png");
   prompt_sprite = Sprite();
-  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + box.image.GetHeight() - 28, box.z + 1);
+  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 25, box.z + 1);
   global.dialog.prompt_sprite = prompt_sprite;
   dialog_opacity(1);
+  global.dialog_shown = true;
 }
 
 fun dialog_opacity(opacity) {
+  if (!global.dialog) return;
   dialog.box.sprite.SetOpacity(opacity);
   dialog.lock.sprite.SetOpacity(opacity);
   dialog.entry.sprite.SetOpacity(opacity);
@@ -72,23 +63,21 @@ fun dialog_opacity(opacity) {
 
 fun display_normal_callback() {
   global.status = "normal";
-  if (global.dialog) dialog_opacity(0);
-  # hide progress until after password
+  # Keep dialog visible if it was shown for password — don't hide on every normal refresh
+  # Only hide progress initially
   progress_box.sprite.SetOpacity(0);
   progress_bar.sprite.SetOpacity(0);
-  progress_wave.sprite.SetOpacity(0);
 }
 
 fun display_password_callback(prompt, bullets) {
   global.status = "password";
-  if (!global.dialog) dialog_setup();
+  if (!global.dialog_shown) dialog_setup();
   else dialog_opacity(1);
-  # hide progress during password entry (will appear after unlock)
+  # hide progress during password entry
   progress_box.sprite.SetOpacity(0);
   progress_bar.sprite.SetOpacity(0);
-  progress_wave.sprite.SetOpacity(0);
   if (prompt) {
-    txt = Image.Text(prompt, 0.91, 0.88, 0.83, 1); # #eae1d4 onSurface
+    txt = Image.Text(prompt, 0.91, 0.88, 0.83, 1);
     dialog.prompt_sprite.SetImage(txt);
     dialog.prompt_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - txt.GetWidth() / 2);
   }
@@ -107,53 +96,33 @@ fun display_password_callback(prompt, bullets) {
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
-# Progress bar — Material You wave-like, appears after unlock (progress >0)
+# Minimal progress bar: 400x4 gray bg, handle same size fully covering when progress=1
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
 progress_box.x = Window.GetX() + Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetY() + Window.GetHeight() * 0.78 - progress_box.image.GetHeight() / 2;
+progress_box.y = Window.GetY() + Window.GetHeight() * 0.75 - progress_box.image.GetHeight() / 2;
 progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
 progress_box.sprite.SetOpacity(0);
 progress_bar.original_image = Image("progress_bar.png");
 progress_bar.sprite = Sprite();
-progress_bar.x = Window.GetX() + Window.GetWidth() / 2 - progress_bar.original_image.GetWidth() / 2;
-progress_bar.y = progress_box.y + (progress_box.image.GetHeight() - progress_bar.original_image.GetHeight()) / 2;
+progress_bar.x = progress_box.x;
+progress_bar.y = progress_box.y;
 progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
 progress_bar.sprite.SetOpacity(0);
-# Wave overlay for Material You wave-like effect
-progress_wave.image = Image("progress_wave.png");
-progress_wave.sprite = Sprite(progress_wave.image);
-progress_wave.x = progress_box.x;
-progress_wave.y = progress_box.y;
-progress_wave.sprite.SetPosition(progress_wave.x, progress_wave.y, 2);
-progress_wave.sprite.SetOpacity(0);
-progress_wave.offset = 0;
 
 fun progress_callback(duration, progress) {
-  # show progress only after password (when progress >0), hide dialog
   if (progress > 0) {
     if (global.dialog) dialog_opacity(0);
     progress_box.sprite.SetOpacity(1);
     progress_bar.sprite.SetOpacity(1);
-    progress_wave.sprite.SetOpacity(0.9);
   }
-  # Material You wave-like: scale bar and animate wave offset
-  if (progress_bar.image.GetWidth() != Math.Int(progress_bar.original_image.GetWidth() * progress)) {
-    progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth() * progress, progress_bar.original_image.GetHeight());
+  # Minimal: handle 100% as bg, fully covering when progress=1, height 4px
+  new_w = Math.Int(progress_bar.original_image.GetWidth() * progress);
+  if (new_w > 0) {
+    progress_bar.image = progress_bar.original_image.Scale(new_w, progress_bar.original_image.GetHeight());
     progress_bar.sprite.SetImage(progress_bar.image);
-  }
-  # wave animation — horizontal shift for wave effect
-  progress_wave.offset += 0.15;
-  if (progress_wave.offset > 20) progress_wave.offset -= 20;
-  progress_wave.sprite.SetX(progress_box.x + progress_wave.offset - 20);
-  # clip wave to progress width (simulate wave progressing)
-  # For simplicity, wave scales with progress as well
-  if (progress > 0) {
-    wave_w = Math.Int(progress_bar.original_image.GetWidth() * progress);
-    if (wave_w > 0) {
-      clipped = progress_wave.image.Scale(wave_w, progress_wave.image.GetHeight());
-      progress_wave.sprite.SetImage(clipped);
-    }
+  } else {
+    progress_bar.sprite.SetOpacity(0);
   }
 }
 Plymouth.SetBootProgressFunction(progress_callback);
@@ -162,8 +131,12 @@ fun quit_callback() { logo.sprite.SetOpacity(1); }
 Plymouth.SetQuitFunction(quit_callback);
 
 message_sprite = Sprite();
-message_sprite.SetPosition(10, 10, 10000);
-fun display_message_callback(text) { my_image = Image.Text(text, 0.91, 0.88, 0.83, 1); message_sprite.SetImage(my_image); }
-fun hide_message_callback(text) { message_sprite = Sprite(); message_sprite.SetPosition(10, 10, 10000); }
+message_sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2, 10, 10000);
+fun display_message_callback(text) {
+  my_image = Image.Text(text, 0.91, 0.88, 0.83, 1);
+  message_sprite.SetImage(my_image);
+  message_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - my_image.GetWidth() / 2);
+}
+fun hide_message_callback(text) { message_sprite.SetOpacity(0); }
 Plymouth.SetDisplayMessageFunction(display_message_callback);
 Plymouth.SetHideMessageFunction(hide_message_callback);

@@ -1,6 +1,6 @@
 # Material You Plymouth theme — cryptsetup password prompt matching DMS
 # Static matugen colors (dark): primary #e5c36c, surface #16130b, container #231f17, onSurface #eae1d4
-# InterVariable, rounded 12, minimal 4px progress, no border on entry, logo at bottom
+# InterVariable, rounded 12, minimal narrow 320x4 progress, no border on entry, logo at bottom, dialog persistent
 
 Window.SetBackgroundTopColor(0.086, 0.074, 0.043);
 Window.SetBackgroundBottomColor(0.121, 0.105, 0.074);
@@ -8,7 +8,7 @@ Window.SetBackgroundBottomColor(0.121, 0.105, 0.074);
 logo.image = Image("special://logo");
 logo.sprite = Sprite(logo.image);
 
-# Logo at bottom (Watermark .96) — not overlapping dialog
+# Logo at bottom — not overlapping dialog
 fun refresh_callback () {
   logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
   logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
@@ -18,6 +18,7 @@ Plymouth.SetRefreshFunction(refresh_callback);
 
 status = "normal";
 dialog_shown = false;
+progress_shown = false;
 
 fun dialog_setup() {
   local.box; local.lock; local.entry;
@@ -26,12 +27,12 @@ fun dialog_setup() {
   entry.image = Image("entry.png");
   box.sprite = Sprite(box.image);
   box.x = Window.GetX() + Window.GetWidth() / 2 - box.image.GetWidth() / 2;
-  box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2 + 20;
+  box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2 + 10;
   box.z = 10000;
   box.sprite.SetPosition(box.x, box.y, box.z);
   lock.sprite = Sprite(lock.image);
-  lock.x = box.x + 50;
-  lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2 - 8;
+  lock.x = box.x + 40;
+  lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2 - 6;
   lock.z = box.z + 1;
   lock.sprite.SetPosition(lock.x, lock.y, lock.z);
   entry.sprite = Sprite(entry.image);
@@ -44,10 +45,14 @@ fun dialog_setup() {
   global.dialog.entry = entry;
   global.dialog.bullet_image = Image("bullet.png");
   prompt_sprite = Sprite();
-  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 25, box.z + 1);
+  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 22, box.z + 1);
   global.dialog.prompt_sprite = prompt_sprite;
+  # Ensure dialog is visible and stays
   dialog_opacity(1);
   global.dialog_shown = true;
+  # Hide progress until after password success
+  progress_box.sprite.SetOpacity(0);
+  progress_bar.sprite.SetOpacity(0);
 }
 
 fun dialog_opacity(opacity) {
@@ -63,19 +68,23 @@ fun dialog_opacity(opacity) {
 
 fun display_normal_callback() {
   global.status = "normal";
-  # Keep dialog visible if it was shown for password — don't hide on every normal refresh
-  # Only hide progress initially
-  progress_box.sprite.SetOpacity(0);
-  progress_bar.sprite.SetOpacity(0);
+  # Do NOT hide password dialog here — keep it visible while waiting for password
+  # Only hide progress initially; progress will be shown after successful unlock
+  if (!global.dialog_shown) {
+    progress_box.sprite.SetOpacity(0);
+    progress_bar.sprite.SetOpacity(0);
+  }
 }
 
 fun display_password_callback(prompt, bullets) {
   global.status = "password";
   if (!global.dialog_shown) dialog_setup();
-  else dialog_opacity(1);
-  # hide progress during password entry
+  # Always ensure dialog is visible — fix flicker where it only appears on bullet change
+  dialog_opacity(1);
+  # Keep progress hidden during password entry
   progress_box.sprite.SetOpacity(0);
   progress_bar.sprite.SetOpacity(0);
+  global.progress_shown = false;
   if (prompt) {
     txt = Image.Text(prompt, 0.91, 0.88, 0.83, 1);
     dialog.prompt_sprite.SetImage(txt);
@@ -84,7 +93,7 @@ fun display_password_callback(prompt, bullets) {
   for (index = 0; dialog.bullet[index] || index < bullets; index++) {
     if (!dialog.bullet[index]) {
       dialog.bullet[index].sprite = Sprite(dialog.bullet_image);
-      dialog.bullet[index].x = dialog.entry.x + 16 + index * (dialog.bullet_image.GetWidth() + 8);
+      dialog.bullet[index].x = dialog.entry.x + 14 + index * (dialog.bullet_image.GetWidth() + 8);
       dialog.bullet[index].y = dialog.entry.y + dialog.entry.image.GetHeight() / 2 - dialog.bullet_image.GetHeight() / 2;
       dialog.bullet[index].z = dialog.entry.z + 1;
       dialog.bullet[index].sprite.SetPosition(dialog.bullet[index].x, dialog.bullet[index].y, dialog.bullet[index].z);
@@ -96,11 +105,11 @@ fun display_password_callback(prompt, bullets) {
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
-# Minimal progress bar: 400x4 gray bg, handle same size fully covering when progress=1
+# Minimal narrow progress bar: 320x4 gray bg, handle same size fully covering when progress=1, appears only after password success
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
 progress_box.x = Window.GetX() + Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetY() + Window.GetHeight() * 0.75 - progress_box.image.GetHeight() / 2;
+progress_box.y = Window.GetY() + Window.GetHeight() * 0.72 - progress_box.image.GetHeight() / 2;
 progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
 progress_box.sprite.SetOpacity(0);
 progress_bar.original_image = Image("progress_bar.png");
@@ -111,16 +120,27 @@ progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
 progress_bar.sprite.SetOpacity(0);
 
 fun progress_callback(duration, progress) {
-  if (progress > 0) {
-    if (global.dialog) dialog_opacity(0);
-    progress_box.sprite.SetOpacity(1);
-    progress_bar.sprite.SetOpacity(1);
+  # Only show progress after password has been entered (status == "normal" and dialog was shown)
+  # During password entry, progress is 0, so keep hidden
+  if (progress <= 0) {
+    progress_box.sprite.SetOpacity(0);
+    progress_bar.sprite.SetOpacity(0);
+    return;
   }
-  # Minimal: handle 100% as bg, fully covering when progress=1, height 4px
+  # After successful unlock, hide password dialog and show progress
+  if (global.dialog_shown) {
+    dialog_opacity(0);
+    global.dialog_shown = false;
+  }
+  progress_box.sprite.SetOpacity(1);
+  progress_bar.sprite.SetOpacity(1);
+  global.progress_shown = true;
+  # Minimal: handle 100% as bg, fully covering when progress=1, height 4px, narrow 320
   new_w = Math.Int(progress_bar.original_image.GetWidth() * progress);
   if (new_w > 0) {
     progress_bar.image = progress_bar.original_image.Scale(new_w, progress_bar.original_image.GetHeight());
     progress_bar.sprite.SetImage(progress_bar.image);
+    progress_bar.sprite.SetX(progress_box.x);
   } else {
     progress_bar.sprite.SetOpacity(0);
   }

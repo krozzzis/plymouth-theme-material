@@ -1,12 +1,11 @@
 # Plymouth Material You theme for OSA
 
-Material You Plymouth theme for OSA. It provides a calm dark boot screen, a
-tonal unlock card, compact password bullets, and a low-profile progress bar.
-The Script implementation contains only Plymouth Script syntax, so it loads
-instead of falling back to a firmware logo.
+Material You Plymouth theme for OSA. It provides a dark Material palette, a
+rounded unlock card, password bullets, and a compact progress bar. The current
+release restores the last known-good Plymouth Script implementation.
 
 - **Name:** `material` (as requested, not `dms`)
-- **Module:** `script` (28px tonal card, 16px input, dark surface `#10140f`, primary `#b8f3b1`)
+- **Module:** `script` (rounded dialog, 320x48 input, dark surface `#16130b`, primary `#e5c36c`)
 - **Usage (NixOS):**
   ```nix
   {
@@ -25,4 +24,4 @@ instead of falling back to a firmware logo.
 
 - **OSA integration:** `osa` already provides `osa.system.plymouth` with `theme = "material"` by default, using this repo as `plymouth-theme-material` input.
 
-Generated assets: `box.png` (520x224), `entry.png` (364x56), `bullet.png` (8x8), `lock.png` (24x24), and 320x6 `progress_box/bar.png`.
+Generated assets: `box.png` (480x280), `entry.png` (320x48), `bullet.png` (14x14), `lock.png` (24x24), and 320x4 `progress_box/bar.png`.

@@ -1,6 +1,6 @@
-# Material You Plymouth theme — cryptsetup password prompt matching DMS
-# Static matugen colors (dark): primary #e5c36c, surface #16130b, container #231f17, onSurface #eae1d4
-# InterVariable, rounded 12, minimal narrow 320x4 progress, no border on entry, logo at bottom, dialog persistent
+# Material You Plymouth theme — cryptsetup password prompt matching DMS.
+# Dark palette: primary #e5c36c, surface #16130b, surface-container #25201a,
+# on-surface #eae1d4, outline #8f887a.
 
 Window.SetBackgroundTopColor(0.086, 0.074, 0.043);
 Window.SetBackgroundBottomColor(0.121, 0.105, 0.074);
@@ -19,6 +19,8 @@ Plymouth.SetRefreshFunction(refresh_callback);
 status = "normal";
 dialog_shown = false;
 progress_shown = false;
+global.password_active = 0;
+global.password_completed = 0;
 
 fun dialog_setup() {
   local.box; local.lock; local.entry;
@@ -27,16 +29,16 @@ fun dialog_setup() {
   entry.image = Image("entry.png");
   box.sprite = Sprite(box.image);
   box.x = Window.GetX() + Window.GetWidth() / 2 - box.image.GetWidth() / 2;
-  box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2 + 10;
+  box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2;
   box.z = 10000;
   box.sprite.SetPosition(box.x, box.y, box.z);
   lock.sprite = Sprite(lock.image);
-  lock.x = box.x + 40;
-  lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2 - 6;
+  lock.x = box.x + 24;
+  lock.y = box.y + 72;
   lock.z = box.z + 1;
   lock.sprite.SetPosition(lock.x, lock.y, lock.z);
   entry.sprite = Sprite(entry.image);
-  entry.x = lock.x + lock.image.GetWidth() + 12;
+  entry.x = lock.x + lock.image.GetWidth() + 16;
   entry.y = lock.y + lock.image.GetHeight() / 2 - entry.image.GetHeight() / 2;
   entry.z = box.z + 1;
   entry.sprite.SetPosition(entry.x, entry.y, entry.z);
@@ -44,8 +46,11 @@ fun dialog_setup() {
   global.dialog.lock = lock;
   global.dialog.entry = entry;
   global.dialog.bullet_image = Image("bullet.png");
+  # The 320px field has 20 visible 8px bullets with 6px spacing and padding.
+  # Never create additional sprites, so a long passphrase remains clipped.
+  global.dialog.max_bullets = 20;
   prompt_sprite = Sprite();
-  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 22, box.z + 1);
+  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 32, box.z + 1);
   global.dialog.prompt_sprite = prompt_sprite;
   # Ensure dialog is visible and stays
   dialog_opacity(1);
@@ -68,16 +73,20 @@ fun dialog_opacity(opacity) {
 
 fun display_normal_callback() {
   global.status = "normal";
-  # Do NOT hide password dialog here — keep it visible while waiting for password
-  # Only hide progress initially; progress will be shown after successful unlock
-  if (!global.dialog_shown) {
-    progress_box.sprite.SetOpacity(0);
-    progress_bar.sprite.SetOpacity(0);
+  # Plymouth switches back to normal only once the password agent has accepted
+  # the passphrase. This is the sole transition that permits progress to show.
+  if (global.dialog_shown) {
+    dialog_opacity(0);
+    global.dialog_shown = false;
   }
+  global.password_active = 0;
+  global.password_completed = 1;
 }
 
 fun display_password_callback(prompt, bullets) {
   global.status = "password";
+  global.password_active = 1;
+  global.password_completed = 0;
   if (!global.dialog_shown) dialog_setup();
   # Always ensure dialog is visible — fix flicker where it only appears on bullet change
   dialog_opacity(1);
@@ -90,15 +99,15 @@ fun display_password_callback(prompt, bullets) {
     dialog.prompt_sprite.SetImage(txt);
     dialog.prompt_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - txt.GetWidth() / 2);
   }
-  for (index = 0; dialog.bullet[index] || index < bullets; index++) {
-    if (!dialog.bullet[index]) {
+  for (index = 0; dialog.bullet[index] || (index < bullets && index < dialog.max_bullets); index++) {
+    if (!dialog.bullet[index] && index < dialog.max_bullets) {
       dialog.bullet[index].sprite = Sprite(dialog.bullet_image);
-      dialog.bullet[index].x = dialog.entry.x + 14 + index * (dialog.bullet_image.GetWidth() + 8);
+      dialog.bullet[index].x = dialog.entry.x + 16 + index * (dialog.bullet_image.GetWidth() + 6);
       dialog.bullet[index].y = dialog.entry.y + dialog.entry.image.GetHeight() / 2 - dialog.bullet_image.GetHeight() / 2;
       dialog.bullet[index].z = dialog.entry.z + 1;
       dialog.bullet[index].sprite.SetPosition(dialog.bullet[index].x, dialog.bullet[index].y, dialog.bullet[index].z);
     }
-    if (index < bullets) dialog.bullet[index].sprite.SetOpacity(1);
+    if (index < bullets && index < dialog.max_bullets) dialog.bullet[index].sprite.SetOpacity(1);
     else dialog.bullet[index].sprite.SetOpacity(0);
   }
 }
@@ -120,9 +129,9 @@ progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
 progress_bar.sprite.SetOpacity(0);
 
 fun progress_callback(duration, progress) {
-  # Only show progress after password has been entered (status == "normal" and dialog was shown)
-  # During password entry, progress is 0, so keep hidden
-  if (progress <= 0) {
+  # Boot services may report progress while systemd is still waiting for a
+  # passphrase. Do not reveal it until DisplayNormal confirms success.
+  if (global.password_active || !global.password_completed || progress <= 0) {
     progress_box.sprite.SetOpacity(0);
     progress_bar.sprite.SetOpacity(0);
     return;

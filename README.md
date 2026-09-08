@@ -1,9 +1,12 @@
-# Plymouth Material You theme — matching DMS (OSA)
+# Plymouth Material You theme for OSA
 
-Material You Plymouth theme for OSA — cryptsetup password prompt in Material Design, repeating DMS (DankMaterialShell).
+Material You Plymouth theme for OSA. It provides a calm dark boot screen, a
+tonal unlock card, compact password bullets, and a low-profile progress bar.
+The Script implementation contains only Plymouth Script syntax, so it loads
+instead of falling back to a firmware logo.
 
 - **Name:** `material` (as requested, not `dms`)
-- **Module:** `script` (rounded 12px, InterVariable, blur-like dark surface #141218 / #1C1B1F, primary #6750A4)
+- **Module:** `script` (28px tonal card, 16px input, dark surface `#10140f`, primary `#b8f3b1`)
 - **Usage (NixOS):**
   ```nix
   {
@@ -22,4 +25,4 @@ Material You Plymouth theme for OSA — cryptsetup password prompt in Material D
 
 - **OSA integration:** `osa` already provides `osa.system.plymouth` with `theme = "material"` by default, using this repo as `plymouth-theme-material` input.
 
-Generated assets: `box.png` (520x320), `entry.png` (360x56), `bullet.png` (14x14), `lock.png` (24x24), `progress_box/bar.png` — all Material You, DMS palette.
+Generated assets: `box.png` (520x224), `entry.png` (364x56), `bullet.png` (8x8), `lock.png` (24x24), and 320x6 `progress_box/bar.png`.

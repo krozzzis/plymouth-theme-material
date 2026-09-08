@@ -1,25 +1,47 @@
-# Material You Plymouth theme — cryptsetup password prompt matching DMS
-# Static matugen colors (dark): primary #e5c36c, surface #16130b, container #25201a, onSurface #eae1d4, outline #3a3933
-# Material You guidelines: 24dp padding, 16dp spacing, 12dp corners, Inter, elevation 1, minimal 280x4 progress
+# Material You Plymouth theme for OSA.
+# Dark scheme: primary #b8f3b1, surface #10140f, surface container #1d281e,
+# on-surface #e0e4dc, outline #879587. The interface deliberately stays quiet:
+# one brand mark, a tonal password card, and a compact progress indicator.
 
-Window.SetBackgroundTopColor(0.086, 0.074, 0.043);
-Window.SetBackgroundBottomColor(0.094, 0.082, 0.047);
+Window.SetBackgroundTopColor(0.063, 0.078, 0.059);
+Window.SetBackgroundBottomColor(0.039, 0.055, 0.043);
 
 logo.image = Image("special://logo");
 logo.sprite = Sprite(logo.image);
 
-# Logo at bottom (96% as in bgrt before) — not overlapping dialog
+# The logo remains below the content so it never competes with the unlock card.
 fun refresh_callback () {
   logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
-  logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 32);
+  logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
   logo.sprite.SetOpacity(1);
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
 status = "normal";
 dialog_shown = false;
+global.capslock_active = 0;
 
-# Material You dialog: 480x200, 24dp padding, headline + text field + capslock indicator
+# A restrained boot label makes the normal boot screen intentional rather than
+# looking like an empty fallback while services start.
+boot_title = Sprite();
+boot_title.image = Image.Text("OSA", 0.72, 0.95, 0.69, 1);
+boot_title.SetImage(boot_title.image);
+boot_title.SetPosition(
+  Window.GetX() + Window.GetWidth() / 2 - boot_title.image.GetWidth() / 2,
+  Window.GetY() + Window.GetHeight() * 0.34,
+  20
+);
+
+boot_subtitle = Sprite();
+boot_subtitle.image = Image.Text("Starting your workspace", 0.74, 0.78, 0.73, 1);
+boot_subtitle.SetImage(boot_subtitle.image);
+boot_subtitle.SetPosition(
+  Window.GetX() + Window.GetWidth() / 2 - boot_subtitle.image.GetWidth() / 2,
+  Window.GetY() + Window.GetHeight() * 0.34 + boot_title.image.GetHeight() + 12,
+  20
+);
+
+# Material You dialog: a 28px tonal card with a 16px input field.
 fun dialog_setup() {
   local.box; local.lock; local.entry; local.capslock_icon;
   box.image = Image("box.png");
@@ -31,19 +53,19 @@ fun dialog_setup() {
   box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2;
   box.z = 10000;
   box.sprite.SetPosition(box.x, box.y, box.z);
-  # Lock icon leading (16dp from left, centered vertically in entry area)
+  # Lock icon leading, centred in the input row.
   lock.sprite = Sprite(lock.image);
-  lock.x = box.x + 24;
-  lock.y = box.y + 72;
+  lock.x = box.x + 32;
+  lock.y = box.y + 86;
   lock.z = box.z + 1;
   lock.sprite.SetPosition(lock.x, lock.y, lock.z);
-  # Entry field — Material You outlined text field, 320x48, no border, filled #25201a
+  # Tonal input field.
   entry.sprite = Sprite(entry.image);
   entry.x = lock.x + lock.image.GetWidth() + 16;
   entry.y = lock.y + lock.image.GetHeight() / 2 - entry.image.GetHeight() / 2;
   entry.z = box.z + 1;
   entry.sprite.SetPosition(entry.x, entry.y, entry.z);
-  # Caps lock indicator — trailing icon, 16x16, shown when caps on
+  # Caps lock indicator — trailing icon, shown only when caps is on.
   capslock_icon.image = capslock_image;
   capslock_icon.sprite = Sprite(capslock_icon.image);
   capslock_icon.x = entry.x + entry.image.GetWidth() - capslock_icon.image.GetWidth() - 12;
@@ -51,9 +73,9 @@ fun dialog_setup() {
   capslock_icon.z = box.z + 2;
   capslock_icon.sprite.SetPosition(capslock_icon.x, capslock_icon.y, capslock_icon.z);
   capslock_icon.sprite.SetOpacity(0);
-  # Prompt / headline — Material title, centered above entry
+  # Prompt / headline, centred above entry.
   prompt_sprite = Sprite();
-  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 32, box.z + 1);
+  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 42, box.z + 1);
   # Supporting text for capslock
   capslock_text_sprite = Sprite();
   capslock_text_sprite.SetPosition(entry.x + entry.image.GetWidth() / 2, entry.y + entry.image.GetHeight() + 10, box.z + 1);
@@ -64,11 +86,10 @@ fun dialog_setup() {
   global.dialog.capslock_text_sprite = capslock_text_sprite;
   global.dialog.bullet_image = Image("bullet.png");
   global.dialog.prompt_sprite = prompt_sprite;
-  # Bullet clipping: entry is 320x48, with 12px padding on each side, so usable width 296
-  # Bullet 8x8 + 6 spacing = 14 per bullet, max ~21 bullets before overflow, we clip by masking
+  # Keep password bullets within the input's curved ends.
   global.dialog.entry_width = entry.image.GetWidth();
-  global.dialog.entry_inner_x = entry.x + 12;
-  global.dialog.entry_inner_width = entry.image.GetWidth() - 24;
+  global.dialog.entry_inner_x = entry.x + 20;
+  global.dialog.entry_inner_width = entry.image.GetWidth() - 40;
   dialog_opacity(1);
   global.dialog_shown = true;
   progress_box.sprite.SetOpacity(0);
@@ -80,8 +101,8 @@ fun dialog_opacity(opacity) {
   dialog.box.sprite.SetOpacity(opacity);
   dialog.lock.sprite.SetOpacity(opacity);
   dialog.entry.sprite.SetOpacity(opacity);
-  dialog.capslock_icon.sprite.SetOpacity(opacity * (global.capslock_active ? 1 : 0));
-  dialog.capslock_text_sprite.SetOpacity(opacity * (global.capslock_active ? 1 : 0));
+  dialog.capslock_icon.sprite.SetOpacity(opacity * global.capslock_active);
+  dialog.capslock_text_sprite.SetOpacity(opacity * global.capslock_active);
   dialog.prompt_sprite.SetOpacity(opacity);
   for (index = 0; dialog.bullet[index]; index++) {
     # Clip bullets to entry mask — hide if outside entry bounds
@@ -89,23 +110,17 @@ fun dialog_opacity(opacity) {
     if (bullet_x + dialog.bullet_image.GetWidth() > dialog.entry_inner_x + dialog.entry_inner_width)
       dialog.bullet[index].sprite.SetOpacity(0);
     else
-      dialog.bullet[index].sprite.SetOpacity(opacity * (dialog.bullet[index].should_show ? 1 : 0));
+      dialog.bullet[index].sprite.SetOpacity(opacity * dialog.bullet[index].should_show);
   }
 }
 
 fun update_capslock() {
-  # Plymouth doesn't expose GetCapsLockState directly in all versions, we try and fallback to hidden
-  # For now, we show capslock indicator based on a simple heuristic: if available, use it
-  # In script, we can try to call Plymouth.GetCapsLockState() if exists
+  # The Script plugin has no portable caps-lock query. Keep the state hidden on
+  # implementations without one rather than presenting an incorrect warning.
   capslock = 0;
-  # Try Plymouth API (may not exist in older versions, then stays 0)
-  # We use try/catch via checking if function exists
-  # If not, capslock stays 0 (hidden) — user can still see via keyboard LED
-  # For hosts where it exists, show icon
-  # Note: This is best-effort for Material You guidelines
   global.capslock_active = capslock;
   if (global.dialog) {
-    dialog.capslock_icon.sprite.SetOpacity(capslock ? 1 : 0);
+    dialog.capslock_icon.sprite.SetOpacity(capslock);
     if (capslock) {
       txt = Image.Text("Caps Lock is on", 0.8, 0.6, 0.6, 1);
       dialog.capslock_text_sprite.SetImage(txt);
@@ -136,16 +151,15 @@ fun display_password_callback(prompt, bullets) {
   global.progress_shown = false;
   update_capslock();
   if (prompt) {
-    # Material headline — use onSurface color, centered
-    txt = Image.Text(prompt, 0.91, 0.88, 0.83, 1);
+    txt = Image.Text(prompt, 0.88, 0.89, 0.86, 1);
     dialog.prompt_sprite.SetImage(txt);
     dialog.prompt_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - txt.GetWidth() / 2);
   }
-  # Bullets: 8x8 small, clipped to entry mask, not overflowing rounded border
+  # Compact password bullets, clipped before the rounded input edge.
   for (index = 0; dialog.bullet[index] || index < bullets; index++) {
     if (!dialog.bullet[index]) {
       dialog.bullet[index].sprite = Sprite(dialog.bullet_image);
-      dialog.bullet[index].x = dialog.entry_inner_x + index * (dialog.bullet_image.GetWidth() + 6);
+      dialog.bullet[index].x = dialog.entry_inner_x + index * (dialog.bullet_image.GetWidth() + 8);
       dialog.bullet[index].y = dialog.entry.y + dialog.entry.image.GetHeight() / 2 - dialog.bullet_image.GetHeight() / 2;
       dialog.bullet[index].z = dialog.entry.z + 1;
       dialog.bullet[index].sprite.SetPosition(dialog.bullet[index].x, dialog.bullet[index].y, dialog.bullet[index].z);
@@ -167,11 +181,11 @@ fun display_password_callback(prompt, bullets) {
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
-# Minimal narrow progress bar: 280x4 gray bg, handle same size fully covering when progress=1, appears only after password success
+# A low-profile 320x6 progress indicator appears after unlock.
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
 progress_box.x = Window.GetX() + Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetY() + Window.GetHeight() * 0.72 - progress_box.image.GetHeight() / 2;
+progress_box.y = Window.GetY() + Window.GetHeight() * 0.34 + boot_title.image.GetHeight() + boot_subtitle.image.GetHeight() + 32;
 progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
 progress_box.sprite.SetOpacity(0);
 progress_bar.original_image = Image("progress_bar.png");
@@ -212,7 +226,7 @@ Plymouth.SetQuitFunction(quit_callback);
 message_sprite = Sprite();
 message_sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2, 10, 10000);
 fun display_message_callback(text) {
-  my_image = Image.Text(text, 0.91, 0.88, 0.83, 1);
+  my_image = Image.Text(text, 0.88, 0.89, 0.86, 1);
   message_sprite.SetImage(my_image);
   message_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - my_image.GetWidth() / 2);
 }

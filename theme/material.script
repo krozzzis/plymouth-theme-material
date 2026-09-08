@@ -19,25 +19,22 @@ Plymouth.SetRefreshFunction(refresh_callback);
 
 status = "normal";
 dialog_shown = false;
-global.capslock_active = 0;
 
 # A restrained boot label makes the normal boot screen intentional rather than
 # looking like an empty fallback while services start.
-boot_title = Sprite();
-boot_title.image = Image.Text("OSA", 0.72, 0.95, 0.69, 1);
-boot_title.SetImage(boot_title.image);
-boot_title.SetPosition(
-  Window.GetX() + Window.GetWidth() / 2 - boot_title.image.GetWidth() / 2,
+boot_title_image = Image.Text("OSA", 0.72, 0.95, 0.69, 1);
+boot_title_sprite = Sprite(boot_title_image);
+boot_title_sprite.SetPosition(
+  Window.GetX() + Window.GetWidth() / 2 - boot_title_image.GetWidth() / 2,
   Window.GetY() + Window.GetHeight() * 0.34,
   20
 );
 
-boot_subtitle = Sprite();
-boot_subtitle.image = Image.Text("Starting your workspace", 0.74, 0.78, 0.73, 1);
-boot_subtitle.SetImage(boot_subtitle.image);
-boot_subtitle.SetPosition(
-  Window.GetX() + Window.GetWidth() / 2 - boot_subtitle.image.GetWidth() / 2,
-  Window.GetY() + Window.GetHeight() * 0.34 + boot_title.image.GetHeight() + 12,
+boot_subtitle_image = Image.Text("Starting your workspace", 0.74, 0.78, 0.73, 1);
+boot_subtitle_sprite = Sprite(boot_subtitle_image);
+boot_subtitle_sprite.SetPosition(
+  Window.GetX() + Window.GetWidth() / 2 - boot_subtitle_image.GetWidth() / 2,
+  Window.GetY() + Window.GetHeight() * 0.34 + boot_title_image.GetHeight() + 12,
   20
 );
 
@@ -143,13 +140,13 @@ fun display_normal_callback() {
 
 fun display_password_callback(prompt, bullets) {
   global.status = "password";
+  update_capslock();
   if (!global.dialog_shown) dialog_setup();
   dialog_opacity(1);
   # Keep progress hidden during password entry (will appear after success)
   progress_box.sprite.SetOpacity(0);
   progress_bar.sprite.SetOpacity(0);
   global.progress_shown = false;
-  update_capslock();
   if (prompt) {
     txt = Image.Text(prompt, 0.88, 0.89, 0.86, 1);
     dialog.prompt_sprite.SetImage(txt);
@@ -185,7 +182,7 @@ Plymouth.SetDisplayPasswordFunction(display_password_callback);
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
 progress_box.x = Window.GetX() + Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetY() + Window.GetHeight() * 0.34 + boot_title.image.GetHeight() + boot_subtitle.image.GetHeight() + 32;
+progress_box.y = Window.GetY() + Window.GetHeight() * 0.34 + boot_title_image.GetHeight() + boot_subtitle_image.GetHeight() + 32;
 progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
 progress_box.sprite.SetOpacity(0);
 progress_bar.original_image = Image("progress_bar.png");

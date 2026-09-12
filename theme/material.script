@@ -1,171 +1,140 @@
-# Material You Plymouth theme — cryptsetup password prompt matching DMS.
-# Dark palette: primary #e5c36c, surface #16130b, surface-container #25201a,
-# on-surface #eae1d4, outline #8f887a.
+# Graphite and sage: a shared center axis and an 8px spacing grid.
+Window.SetBackgroundTopColor(@background@);
+Window.SetBackgroundBottomColor(@background@);
 
-Window.SetBackgroundTopColor(0.086, 0.074, 0.043);
-Window.SetBackgroundBottomColor(0.121, 0.105, 0.074);
+password_active = 0;
+password_completed = 0;
+bullet_count = 0;
 
-logo.image = Image("special://logo");
-logo.sprite = Sprite(logo.image);
-
-# Logo at bottom — not overlapping dialog
-fun refresh_callback () {
-  logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
-  logo.sprite.SetY(Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - 40);
-  logo.sprite.SetOpacity(1);
+logo.image = Image("@logo@");
+if (logo.image.GetWidth() > @logoSize@ || logo.image.GetHeight() > @logoSize@) {
+  logo.scale = @logoSize@ / Math.Max(logo.image.GetWidth(), logo.image.GetHeight());
+  logo.image = logo.image.Scale(Math.Max(1, Math.Int(logo.image.GetWidth() * logo.scale)), Math.Max(1, Math.Int(logo.image.GetHeight() * logo.scale)));
 }
-Plymouth.SetRefreshFunction(refresh_callback);
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetOpacity(@logoOpacity@);
+box.image = Image("box.png");
+box.sprite = Sprite(box.image);
+lock.image = Image("lock.png");
+lock.sprite = Sprite(lock.image);
+entry.image = Image("entry.png");
+entry.sprite = Sprite(entry.image);
+title.sprite = Sprite();
+prompt.sprite = Sprite();
+bullet.image = Image("bullet.png");
+max_bullets = 20;
+for (i = 0; i < max_bullets; i++) {
+  bullet.sprites[i] = Sprite(bullet.image);
+  bullet.sprites[i].SetOpacity(0);
+}
+progress.image = Image("progress_box.png");
+progress.sprite = Sprite(progress.image);
+progress.fill = Image("progress_bar.png");
+progress.fill_sprite = Sprite();
+progress.sprite.SetOpacity(0);
+progress.fill_sprite.SetOpacity(0);
+message.sprite = Sprite();
 
-status = "normal";
-dialog_shown = false;
-progress_shown = false;
-global.password_active = 0;
-global.password_completed = 0;
+# Keep long cryptsetup/device messages within their allocated region.
+fun fit_image(img, width, height) {
+  local.scale = 1;
+  if (img.GetWidth() > width) scale = width / img.GetWidth();
+  if (img.GetHeight() * scale > height) scale = height / img.GetHeight();
+  if (scale < 1) img = img.Scale(Math.Max(1, Math.Int(img.GetWidth() * scale)), Math.Max(1, Math.Int(img.GetHeight() * scale)));
+  return img;
+}
+fun fit_text(text, width, height, font) {
+  return fit_image(Image.Text(text, @muted@, 1, font, "center"), width, height);
+}
+title.image = fit_image(Image.Text(@title@, @foreground@, 1, @titleFont@, "center"), 368, 40);
+title.sprite.SetImage(title.image);
 
-fun dialog_setup() {
-  local.box; local.lock; local.entry;
-  box.image = Image("box.png");
-  lock.image = Image("lock.png");
-  entry.image = Image("entry.png");
-  box.sprite = Sprite(box.image);
-  box.x = Window.GetX() + Window.GetWidth() / 2 - box.image.GetWidth() / 2;
-  box.y = Window.GetY() + Window.GetHeight() / 2 - box.image.GetHeight() / 2;
-  box.z = 10000;
-  box.sprite.SetPosition(box.x, box.y, box.z);
-  lock.sprite = Sprite(lock.image);
-  lock.x = box.x + 24;
-  lock.y = box.y + 72;
-  lock.z = box.z + 1;
-  lock.sprite.SetPosition(lock.x, lock.y, lock.z);
-  entry.sprite = Sprite(entry.image);
-  entry.x = lock.x + lock.image.GetWidth() + 16;
-  entry.y = lock.y + lock.image.GetHeight() / 2 - entry.image.GetHeight() / 2;
-  entry.z = box.z + 1;
-  entry.sprite.SetPosition(entry.x, entry.y, entry.z);
-  global.dialog.box = box;
-  global.dialog.lock = lock;
-  global.dialog.entry = entry;
-  global.dialog.bullet_image = Image("bullet.png");
-  # The 320px field has 20 visible 8px bullets with 6px spacing and padding.
-  # Never create additional sprites, so a long passphrase remains clipped.
-  global.dialog.max_bullets = 20;
-  prompt_sprite = Sprite();
-  prompt_sprite.SetPosition(box.x + box.image.GetWidth() / 2, box.y + 32, box.z + 1);
-  global.dialog.prompt_sprite = prompt_sprite;
-  # Ensure dialog is visible and stays
-  dialog_opacity(1);
-  global.dialog_shown = true;
-  # Hide progress until after password success
-  progress_box.sprite.SetOpacity(0);
-  progress_bar.sprite.SetOpacity(0);
+fun layout() {
+  local.cx = Window.GetX() + Window.GetWidth() / 2;
+  local.cy = Window.GetY() + Window.GetHeight() / 2;
+  global.box.x = Math.Int(cx - box.image.GetWidth() / 2);
+  global.box.y = Math.Int(cy - box.image.GetHeight() / 2);
+  box.sprite.SetPosition(box.x, box.y, 10);
+  lock.sprite.SetPosition(Math.Int(cx - lock.image.GetWidth() / 2), box.y + 32, 11);
+  title.sprite.SetPosition(Math.Int(cx - title.image.GetWidth() / 2), Math.Int(box.y + 120 - title.image.GetHeight() / 2), 11);
+  if (prompt.image)
+    prompt.sprite.SetPosition(Math.Int(cx - prompt.image.GetWidth() / 2), Math.Int(box.y + 160 - prompt.image.GetHeight() / 2), 11);
+  global.entry.x = Math.Int(cx - entry.image.GetWidth() / 2);
+  global.entry.y = box.y + 200;
+  entry.sprite.SetPosition(entry.x, entry.y, 11);
+  local.visible = Math.Min(bullet_count, max_bullets);
+  for (i = 0; i < max_bullets; i++) {
+    bullet.sprites[i].SetPosition(Math.Int(cx - (visible * 14 - 6) / 2 + i * 14), entry.y + 24, 12);
+    bullet.sprites[i].SetOpacity(password_active && i < visible);
+  }
+  progress.sprite.SetPosition(Math.Int(cx - progress.image.GetWidth() / 2), Math.Int(cy + 64), 1);
+  progress.fill_sprite.SetPosition(Math.Int(cx - progress.image.GetWidth() / 2), Math.Int(cy + 64), 2);
+  logo.sprite.SetPosition(Math.Int(cx - logo.image.GetWidth() / 2), Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - @logoBottom@, 1);
+  # Reserve room for feedback on short displays instead of overlapping the logo.
+  if (logo.sprite.GetY() < box.y + box.image.GetHeight() + 72 && (password_active || message.sprite.GetOpacity() > 0))
+    logo.sprite.SetOpacity(0);
+  else
+    logo.sprite.SetOpacity(@logoOpacity@);
+  if (message.image)
+    message.sprite.SetPosition(Math.Int(cx - message.image.GetWidth() / 2), box.y + box.image.GetHeight() + 20, 11);
 }
 
 fun dialog_opacity(opacity) {
-  if (!global.dialog) return;
-  dialog.box.sprite.SetOpacity(opacity);
-  dialog.lock.sprite.SetOpacity(opacity);
-  dialog.entry.sprite.SetOpacity(opacity);
-  dialog.prompt_sprite.SetOpacity(opacity);
-  for (index = 0; dialog.bullet[index]; index++) {
-    dialog.bullet[index].sprite.SetOpacity(opacity);
-  }
+  box.sprite.SetOpacity(opacity);
+  lock.sprite.SetOpacity(opacity);
+  title.sprite.SetOpacity(opacity);
+  prompt.sprite.SetOpacity(opacity);
+  for (i = 0; i < max_bullets; i++)
+    bullet.sprites[i].SetOpacity(opacity && i < bullet_count);
+}
+
+fun display_password_callback(text, bullets) {
+  global.password_active = 1;
+  global.password_completed = 0;
+  global.bullet_count = bullets;
+  if (!text) text = @passwordHint@;
+  global.prompt.image = fit_text(text, 368, 40, @textFont@);
+  prompt.sprite.SetImage(prompt.image);
+  progress.sprite.SetOpacity(0);
+  progress.fill_sprite.SetOpacity(0);
+  dialog_opacity(1);
+  layout();
 }
 
 fun display_normal_callback() {
-  global.status = "normal";
-  # Plymouth switches back to normal only once the password agent has accepted
-  # the passphrase. This is the sole transition that permits progress to show.
-  if (global.dialog_shown) {
-    dialog_opacity(0);
-    global.dialog_shown = false;
-  }
   global.password_active = 0;
   global.password_completed = 1;
+  global.bullet_count = 0;
+  dialog_opacity(0);
 }
 
-fun display_password_callback(prompt, bullets) {
-  global.status = "password";
-  global.password_active = 1;
-  global.password_completed = 0;
-  if (!global.dialog_shown) dialog_setup();
-  # Always ensure dialog is visible — fix flicker where it only appears on bullet change
-  dialog_opacity(1);
-  # Keep progress hidden during password entry
-  progress_box.sprite.SetOpacity(0);
-  progress_bar.sprite.SetOpacity(0);
-  global.progress_shown = false;
-  if (prompt) {
-    txt = Image.Text(prompt, 0.91, 0.88, 0.83, 1);
-    dialog.prompt_sprite.SetImage(txt);
-    dialog.prompt_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - txt.GetWidth() / 2);
-  }
-  for (index = 0; dialog.bullet[index] || (index < bullets && index < dialog.max_bullets); index++) {
-    if (!dialog.bullet[index] && index < dialog.max_bullets) {
-      dialog.bullet[index].sprite = Sprite(dialog.bullet_image);
-      dialog.bullet[index].x = dialog.entry.x + 16 + index * (dialog.bullet_image.GetWidth() + 6);
-      dialog.bullet[index].y = dialog.entry.y + dialog.entry.image.GetHeight() / 2 - dialog.bullet_image.GetHeight() / 2;
-      dialog.bullet[index].z = dialog.entry.z + 1;
-      dialog.bullet[index].sprite.SetPosition(dialog.bullet[index].x, dialog.bullet[index].y, dialog.bullet[index].z);
-    }
-    if (index < bullets && index < dialog.max_bullets) dialog.bullet[index].sprite.SetOpacity(1);
-    else dialog.bullet[index].sprite.SetOpacity(0);
-  }
-}
-Plymouth.SetDisplayNormalFunction(display_normal_callback);
-Plymouth.SetDisplayPasswordFunction(display_password_callback);
-
-# Minimal narrow progress bar: 320x4 gray bg, handle same size fully covering when progress=1, appears only after password success
-progress_box.image = Image("progress_box.png");
-progress_box.sprite = Sprite(progress_box.image);
-progress_box.x = Window.GetX() + Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetY() + Window.GetHeight() * 0.72 - progress_box.image.GetHeight() / 2;
-progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 0);
-progress_box.sprite.SetOpacity(0);
-progress_bar.original_image = Image("progress_bar.png");
-progress_bar.sprite = Sprite();
-progress_bar.x = progress_box.x;
-progress_bar.y = progress_box.y;
-progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 1);
-progress_bar.sprite.SetOpacity(0);
-
-fun progress_callback(duration, progress) {
-  # Boot services may report progress while systemd is still waiting for a
-  # passphrase. Do not reveal it until DisplayNormal confirms success.
-  if (global.password_active || !global.password_completed || progress <= 0) {
-    progress_box.sprite.SetOpacity(0);
-    progress_bar.sprite.SetOpacity(0);
+fun progress_callback(duration, fraction) {
+  # Keep progress hidden throughout password entry and retries.
+  if (password_active || !password_completed || fraction <= 0) {
+    progress.sprite.SetOpacity(0);
+    progress.fill_sprite.SetOpacity(0);
     return;
   }
-  # After successful unlock, hide password dialog and show progress
-  if (global.dialog_shown) {
-    dialog_opacity(0);
-    global.dialog_shown = false;
-  }
-  progress_box.sprite.SetOpacity(1);
-  progress_bar.sprite.SetOpacity(1);
-  global.progress_shown = true;
-  # Minimal: handle 100% as bg, fully covering when progress=1, height 4px, narrow 320
-  new_w = Math.Int(progress_bar.original_image.GetWidth() * progress);
-  if (new_w > 0) {
-    progress_bar.image = progress_bar.original_image.Scale(new_w, progress_bar.original_image.GetHeight());
-    progress_bar.sprite.SetImage(progress_bar.image);
-    progress_bar.sprite.SetX(progress_box.x);
-  } else {
-    progress_bar.sprite.SetOpacity(0);
-  }
+  local.width = Math.Max(1, Math.Int(progress.fill.GetWidth() * Math.Min(1, fraction)));
+  progress.fill_sprite.SetImage(progress.fill.Scale(width, progress.fill.GetHeight()));
+  progress.sprite.SetOpacity(1);
+  progress.fill_sprite.SetOpacity(1);
+  layout();
 }
-Plymouth.SetBootProgressFunction(progress_callback);
 
-fun quit_callback() { logo.sprite.SetOpacity(1); }
-Plymouth.SetQuitFunction(quit_callback);
-
-message_sprite = Sprite();
-message_sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2, 10, 10000);
 fun display_message_callback(text) {
-  my_image = Image.Text(text, 0.91, 0.88, 0.83, 1);
-  message_sprite.SetImage(my_image);
-  message_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - my_image.GetWidth() / 2);
+  global.message.image = fit_text(text, Math.Min(480, Window.GetWidth() - 48), 40, @textFont@);
+  message.sprite.SetImage(message.image);
+  message.sprite.SetOpacity(1);
+  layout();
 }
-fun hide_message_callback(text) { message_sprite.SetOpacity(0); }
+fun hide_message_callback(text) { message.sprite.SetOpacity(0); }
+
+dialog_opacity(0);
+layout();
+Plymouth.SetRefreshFunction(layout);
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetBootProgressFunction(progress_callback);
 Plymouth.SetDisplayMessageFunction(display_message_callback);
 Plymouth.SetHideMessageFunction(hide_message_callback);

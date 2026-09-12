@@ -1,5 +1,5 @@
 {
-  description = "Plymouth Material You theme matching DMS (OSA) — cryptsetup password prompt";
+  description = "A quiet graphite-and-sage Plymouth theme with Rubik typography";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -14,47 +14,79 @@
     in
     {
       packages = forAllSystems (pkgs: rec {
-        plymouth-theme-material = pkgs.stdenvNoCC.mkDerivation {
-          pname = "plymouth-theme-material";
-          version = "1.7";
-          src = ./theme;
-          dontUnpack = true;
-          nativeBuildInputs = [ pkgs.imagemagick ];
-          installPhase = ''
-                        theme="$out/share/plymouth/themes/material"
-                        mkdir -p "$theme"
-                        cp $src/material.script "$theme/material.script"
-                        cat > "$theme/material.plymouth" <<PLYMOUTH
-            [Plymouth Theme]
-            Name=Material
-            Description=Material You theme for OSA — cryptsetup password prompt matching DMS (rounded 12px, Inter) — static matugen colors, minimal narrow progress
-            ModuleName=script
-
-            [script]
-            ImageDir=$theme
-            ScriptFile=$theme/material.script
-            PLYMOUTH
-                        # Material You tonal surfaces: primary #e5c36c, surface #16130b,
-                        # surface-container #25201a, outline #8f887a.
-                        magick -size 480x200 xc:none -fill "#25201a" -stroke "#8f887a" -strokewidth 1 \
-                          -draw "roundrectangle 1,1 478,198 16,16" "$theme/box.png"
-                        magick -size 320x48 xc:none -fill "#16130b" -stroke "#8f887a" -strokewidth 1 \
-                          -draw "roundrectangle 1,1 318,46 12,12" "$theme/entry.png"
-                        magick -size 8x8 xc:none -fill "#e5c36c" -draw "circle 4,4 4,1" "$theme/bullet.png"
-                        magick -size 20x20 xc:none -fill "#eae1d4" -gravity center -pointsize 14 -font "DejaVu-Sans" -annotate +0+1 "🔒" "$theme/lock.png" || \
-                          magick -size 20x20 xc:none -fill "#e5c36c" -draw "circle 10,10 10,1" "$theme/lock.png"
-                        # Minimal narrow progress: 320x4 gray bg, handle same size fully covering
-                        magick -size 320x4 xc:none -fill "#3a3933" -draw "rectangle 0,0 320,4" "$theme/progress_box.png"
-                        magick -size 320x4 xc:none -fill "#e5c36c" -draw "rectangle 0,0 320,4" "$theme/progress_bar.png"
-          '';
-        };
+        plymouth-theme-material = pkgs.callPackage ./package.nix { };
         default = plymouth-theme-material;
       });
 
-      nixosModules.material = { pkgs, ... }: {
-        boot.plymouth.themePackages = [
-          self.packages.${pkgs.stdenv.hostPlatform.system}.plymouth-theme-material
-        ];
-      };
+      checks = forAllSystems (
+        pkgs:
+        let
+          # NixOS normally loads plugins from /run, which is absent in a builder.
+          previewPlymouth = pkgs.plymouth.overrideAttrs (old: {
+            mesonFlags =
+              builtins.filter (flag: !(pkgs.lib.hasPrefix "-Druntime-plugins=" flag)) old.mesonFlags
+              ++ [ "-Druntime-plugins=false" ];
+          });
+          defaultTheme = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          customTheme = defaultTheme.override {
+            settings = {
+              palette.background = "#17131e";
+              palette.surface = "#241d30";
+              palette.outline = "#473b56";
+              palette.accent = "#cfb4f5";
+              palette.inputOutline = "#cfb4f5";
+              palette.input = "#17131e";
+              palette.badge = "#3b2d4e";
+              palette.onSurface = "#eee5f5";
+              palette.muted = "#b7a8c7";
+              font = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
+              fontFamily = "DejaVu Sans";
+              title = "Welcome to \"my device\" — unlock to continue";
+              titleSize = 24;
+              textSize = 12;
+              cardRadius = 8;
+              inputRadius = 0;
+              logo = "${defaultTheme}/share/plymouth/themes/material/lock.png";
+              logoSize = 32;
+              logoOpacity = 0.8;
+              logoBottom = 16;
+              progressWidth = 240;
+              progressHeight = 6;
+            };
+          };
+          checkTheme =
+            theme:
+            let
+              fonts = pkgs.runCommand "material-preview-font" { } ''
+                mkdir -p "$out"
+                cp ${pkgs.lib.escapeShellArg (toString theme.font)} "$out/"
+              '';
+            in
+            pkgs.runCommand "material-theme-check"
+              {
+                nativeBuildInputs = [
+                  pkgs.python3
+                  pkgs.imagemagick
+                ];
+                FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ fonts ]; };
+                MATERIAL_BACKGROUND = theme.settings.palette.background;
+                MATERIAL_CUSTOM_LOGO = if theme.settings.logo == null then "0" else "1";
+              }
+              ''
+                    export XDG_CACHE_HOME="$TMPDIR/font-cache"
+                python3 ${./check-theme.py} ${previewPlymouth}/lib/plymouth/script.so \
+                ${theme}/share/plymouth/themes/material "$out"
+              '';
+        in
+        {
+          theme = checkTheme defaultTheme;
+          customization = checkTheme customTheme;
+        }
+      );
+
+      lib.mkTheme =
+        { pkgs, ... }@args:
+        pkgs.callPackage ./package.nix { settings = builtins.removeAttrs args [ "pkgs" ]; };
+      nixosModules.material = import ./module.nix;
     };
 }

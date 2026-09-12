@@ -26,7 +26,7 @@ for (i = 0; i < max_bullets; i++) {
   bullet.sprites[i] = Sprite(bullet.image);
   bullet.sprites[i].SetOpacity(0);
 }
-capslock.image = Image.Text("CAPS LOCK", @accent@, 1, @textFont@, "right");
+capslock.image = Image("capslock.png");
 capslock.sprite = Sprite(capslock.image);
 capslock.sprite.SetOpacity(0);
 progress.track = Image("progress_track.png");
@@ -64,13 +64,14 @@ fun layout() {
   global.entry.x = Math.Int(cx - entry.image.GetWidth() / 2);
   global.entry.y = box.y + 200;
   entry.sprite.SetPosition(entry.x, entry.y, 11);
+  # Material trailing icon: visible only while the password field is active.
+  capslock.sprite.SetPosition(entry.x + entry.image.GetWidth() - capslock.image.GetWidth() - 16, Math.Int(entry.y + (entry.image.GetHeight() - capslock.image.GetHeight()) / 2), 12);
+  capslock.sprite.SetOpacity(password_active && Plymouth.GetCapslockState());
   local.visible = Math.Min(bullet_count, max_bullets);
   for (i = 0; i < max_bullets; i++) {
     bullet.sprites[i].SetPosition(Math.Int(cx - (visible * 14 - 6) / 2 + i * 14), entry.y + 24, 12);
     bullet.sprites[i].SetOpacity(password_active && i < visible);
   }
-  capslock.sprite.SetPosition(entry.x + entry.image.GetWidth() - capslock.image.GetWidth(), entry.y + entry.image.GetHeight() + 8, 12);
-  capslock.sprite.SetOpacity(password_active && Plymouth.GetCapslockState());
   progress.track_sprite.SetPosition(Math.Int(cx - progress.track.GetWidth() / 2), Math.Int(cy + 64), 1);
   progress.fill_sprite.SetPosition(Math.Int(cx - progress.fill.GetWidth() / 2), Math.Int(cy + 64), 2);
   logo.sprite.SetPosition(Math.Int(cx - logo.image.GetWidth() / 2), Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - @logoBottom@, 1);

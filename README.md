@@ -44,9 +44,11 @@ heading and a gently outlined input.
 
 ### Small details, considered
 
-| Password retry | Boot progress |
+| Caps Lock | Password retry |
 | --- | --- |
-| ![Empty password field with a retry message](screenshots/retry.png) | ![Minimal sage boot progress indicator](screenshots/boot.png) |
+| ![Caps Lock indicator in the password field](screenshots/capslock.png) | ![Empty password field with a retry message](screenshots/retry.png) |
+
+![Minimal sage boot progress indicator](screenshots/boot.png)
 
 These 1280 × 720 screenshots are rendered from the theme by Plymouth's own
 interpreter, text renderer and pixel compositor using simulated display
@@ -212,7 +214,7 @@ nix flake check
 ```
 
 The check runs the actual Plymouth parser and image, text and sprite code.
-It exercises password retries, 200-character input, long prompts, repeated
+It exercises the live Caps Lock state, password retries, 200-character input, long prompts, repeated
 messages, progress clamping and alignment at five resolutions from 640 × 480
 to 3840 × 2160. A Rubik-only font configuration keeps rendering reproducible.
 

@@ -52,6 +52,9 @@ def check(expression):
 
 run("Window.GetWidth = fun() { return 1920; }; Window.GetHeight = fun() { return 1080; };"
     "Window.GetX = fun() { return 0; }; Window.GetY = fun() { return 0; };")
+# The interpreter harness has no physical keyboard provider. Stub only its live
+# Caps Lock query; production themes call Plymouth's native implementation.
+run("Plymouth.GetCapslockState = fun() { return 0; };")
 op = bind("script_parse_file", ptr, C.c_char_p)((sys.argv[2] + "/material.script").encode())
 assert op, "Theme parse failed"
 assert execute(state, op).type != 2
@@ -65,6 +68,9 @@ run('display_password_callback("Enter passphrase for encrypted root:", 8);')
 check("password_active == 1 && box.sprite.GetOpacity() == 1 && progress.track_sprite.GetOpacity() == 0")
 check("box.sprite.GetX() + 216 == 960 && entry.sprite.GetX() + 184 == 960")
 check("lock.sprite.GetX() + 28 == 960")
+check("capslock.image.GetWidth() == 24 && capslock.image.GetHeight() == 24")
+check("capslock.sprite.GetX() + 24 + 16 == entry.sprite.GetX() + 368")
+check("capslock.sprite.GetOpacity() == 0")
 run("Plymouth.GetCapslockState = fun() { return 1; }; layout();")
 check("capslock.sprite.GetOpacity() == 1")
 run("Plymouth.GetCapslockState = fun() { return 0; }; layout();")
@@ -130,8 +136,11 @@ if len(sys.argv) > 3:
 
     run('hide_message_callback(""); display_password_callback("Enter passphrase for encrypted root:", 8);')
     screenshot("unlock")
+    run("Plymouth.GetCapslockState = fun() { return 1; }; layout();")
+    screenshot("capslock")
+    run("Plymouth.GetCapslockState = fun() { return 0; }; layout();")
     run('display_password_callback("Enter passphrase for encrypted root:", 0); display_message_callback("Incorrect passphrase. Please try again.");')
     screenshot("retry")
     run('hide_message_callback(""); display_normal_callback(); progress_callback(1, 0.62);')
     screenshot("boot")
-    print("Rendered unlock, retry and boot screenshots using Plymouth's pixel compositor")
+    print("Rendered unlock, capslock, retry and boot screenshots using Plymouth's pixel compositor")

@@ -38,7 +38,6 @@ let
   script = replaceVars ./theme/material.script {
     background = rgb p.background;
     foreground = rgb p.onSurface;
-    accent = rgb p.accent;
     muted = rgb p.muted;
     title = builtins.toJSON cfg.title;
     passwordHint = builtins.toJSON cfg.passwordHint;
@@ -89,6 +88,10 @@ stdenvNoCC.mkDerivation {
           "roundrectangle 2,2 1470,222 ${toString (cfg.inputRadius * 4)},${toString (cfg.inputRadius * 4)}"
       }' -resize 368x56 "$theme/entry.png"
     magick -size 32x32 xc:none -fill '${p.accent}' -draw 'circle 16,16 16,2' -resize 8x8 "$theme/bullet.png"
+    # Material Symbols-inspired keyboard_capslock, supersampled for clean edges.
+    magick -size 96x96 xc:none -fill none -stroke '${p.accent}' -strokewidth 8 \
+      -draw "path 'M 20,52 L 48,24 L 76,52 M 24,72 L 72,72'" \
+      -resize 24x24 "$theme/capslock.png"
     magick -size 224x224 xc:none -fill '${p.badge}' \
       -draw 'circle 112,112 112,2' -fill none -stroke '${p.accent}' -strokewidth 8 \
       -draw "path 'M 80,104 L 80,80 C 80,40 144,40 144,80 L 144,104'" \

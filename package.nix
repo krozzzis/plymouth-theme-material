@@ -38,6 +38,7 @@ let
   script = replaceVars ./theme/material.script {
     background = rgb p.background;
     foreground = rgb p.onSurface;
+    accent = rgb p.accent;
     muted = rgb p.muted;
     title = builtins.toJSON cfg.title;
     passwordHint = builtins.toJSON cfg.passwordHint;
@@ -94,6 +95,7 @@ stdenvNoCC.mkDerivation {
       -fill '${p.accent}' -stroke none -draw 'roundrectangle 64,96 160,164 16,16' \
       -fill '${p.badge}' -draw 'circle 112,126 112,119' \
       -draw 'roundrectangle 109,126 115,143 3,3' -resize 56x56 "$theme/lock.png"
+    magick -size ${toString cfg.progressWidth}x${toString cfg.progressHeight} xc:'${p.outline}' "$theme/progress_track.png"
     magick -size ${toString cfg.progressWidth}x${toString cfg.progressHeight} xc:'${p.accent}' "$theme/progress_bar.png"
     ${lib.optionalString (cfg.logo != null) ''
       magick ${lib.escapeShellArg (toString cfg.logo)} -resize '${toString cfg.logoSize}x${toString cfg.logoSize}>' "$theme/logo.png"

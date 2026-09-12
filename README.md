@@ -181,7 +181,7 @@ their downstream denix configuration; OSA uses the package's font automatically.
 | `palette.background` | `#0f1413` | Screen background |
 | `palette.surface` | `#19221e` | Card fill |
 | `palette.outline` | `#303e35` | Card outline |
-| `palette.accent` | `#b9d6bf` | Lock, password dots and progress fill |
+| `palette.accent` | `#b9d6bf` | Lock, password dots, Caps Lock indicator and progress fill |
 | `palette.onSurface` | `#e8f0e8` | Heading |
 | `palette.muted` | `#a8b8ad` | Prompts and messages |
 | `palette.input` | `#0f1413` | Input fill |
@@ -197,7 +197,7 @@ their downstream denix configuration; OSA uses the package's font automatically.
 | `logoSize` | `48` | Maximum width and height; 16–96px |
 | `logoBottom` | `32` | Bottom margin; 0–64px |
 | `logoOpacity` | `0.55` | 0–1 |
-| `progressWidth` / `progressHeight` | `320` / `2` | Borderless line dimensions; 80–432 / 1–6 px |
+| `progressWidth` / `progressHeight` | `320` / `4` | Borderless track dimensions; 80–432 / 1–6 px |
 
 The card's dimensions and spacing stay fixed to preserve alignment. Unknown
 settings and invalid values fail at evaluation instead of breaking a boot.

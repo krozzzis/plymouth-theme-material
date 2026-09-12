@@ -59,11 +59,16 @@ check("box.image.GetWidth() == 432 && entry.image.GetWidth() == 368")
 check("title.image.GetWidth() > 100 && title.image.GetHeight() > 10")
 check("box.sprite.GetOpacity() == 0")
 run("progress_callback(1, 0.25);")
-check("progress.fill_sprite.GetOpacity() == 1 && progress.fill_sprite.GetImage().GetWidth() == progress.fill.GetWidth() / 4")
+check("progress.track_sprite.GetOpacity() == 1 && progress.fill_sprite.GetOpacity() == 1 && progress.fill_sprite.GetImage().GetWidth() == progress.fill.GetWidth() / 4")
+run("Plymouth.GetCapslockState = fun() { return 0; };")
 run('display_password_callback("Enter passphrase for encrypted root:", 8);')
-check("password_active == 1 && box.sprite.GetOpacity() == 1")
+check("password_active == 1 && box.sprite.GetOpacity() == 1 && progress.track_sprite.GetOpacity() == 0")
 check("box.sprite.GetX() + 216 == 960 && entry.sprite.GetX() + 184 == 960")
 check("lock.sprite.GetX() + 28 == 960")
+run("Plymouth.GetCapslockState = fun() { return 1; }; layout();")
+check("capslock.sprite.GetOpacity() == 1")
+run("Plymouth.GetCapslockState = fun() { return 0; }; layout();")
+check("capslock.sprite.GetOpacity() == 0")
 check("bullet.sprites[0].GetX() + bullet.sprites[7].GetX() + 8 == 1920")
 run("progress_callback(1, 0.6);")
 check("progress.fill_sprite.GetOpacity() == 0")
@@ -78,8 +83,8 @@ check("message.sprite.GetOpacity() == 1")
 run('display_password_callback("' + 'long-device-name-' * 25 + '", 1);')
 check("prompt.image.GetWidth() <= 368 && prompt.image.GetHeight() <= 40")
 run("display_normal_callback(); progress_callback(1, 1.5);")
-check("box.sprite.GetOpacity() == 0 && bullet.sprites[0].GetOpacity() == 0")
-check("progress.fill_sprite.GetOpacity() == 1 && progress.fill_sprite.GetImage().GetWidth() == progress.fill.GetWidth()")
+check("box.sprite.GetOpacity() == 0 && bullet.sprites[0].GetOpacity() == 0 && capslock.sprite.GetOpacity() == 0")
+check("progress.track_sprite.GetOpacity() == 1 && progress.fill_sprite.GetOpacity() == 1 && progress.fill_sprite.GetImage().GetWidth() == progress.fill.GetWidth()")
 if os.environ.get("MATERIAL_CUSTOM_LOGO") == "1":
     check("logo.image.GetWidth() == 32 && logo.image.GetHeight() == 32")
 for width, height in [(640, 480), (1280, 720), (2560, 1440), (3840, 2160)]:
@@ -106,8 +111,8 @@ if len(sys.argv) > 3:
     def screenshot(name):
         canvas = new_buffer(1280, 720)
         fill(canvas, None, int(os.environ.get("MATERIAL_BACKGROUND", "#0f1413")[1:], 16))
-        sprites = ["logo.sprite", "progress.fill_sprite", "box.sprite",
-                   "lock.sprite", "title.sprite", "prompt.sprite", "entry.sprite", "message.sprite"]
+        sprites = ["logo.sprite", "progress.track_sprite", "progress.fill_sprite", "box.sprite",
+                   "lock.sprite", "title.sprite", "prompt.sprite", "entry.sprite", "capslock.sprite", "message.sprite"]
         sprites += [f"bullet.sprites[{i}]" for i in range(20)]
         for sprite in sprites:
             opacity = number(run(f"return {sprite}.GetOpacity();"))

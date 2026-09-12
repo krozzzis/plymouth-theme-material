@@ -79,6 +79,7 @@ fun dialog_opacity(opacity) {
   lock.sprite.SetOpacity(opacity);
   title.sprite.SetOpacity(opacity);
   prompt.sprite.SetOpacity(opacity);
+  entry.sprite.SetOpacity(opacity);
   for (i = 0; i < max_bullets; i++)
     bullet.sprites[i].SetOpacity(opacity && i < bullet_count);
 }

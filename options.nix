@@ -75,5 +75,5 @@ in
     description = "Footer logo opacity.";
   };
   progressWidth = integer 320 80 432 "Centered progress track width in pixels.";
-  progressHeight = integer 4 2 12 "Progress track height in pixels.";
+  progressHeight = integer 2 1 6 "Borderless progress line height in pixels.";
 }

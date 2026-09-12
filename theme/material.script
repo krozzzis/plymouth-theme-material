@@ -3,7 +3,6 @@ Window.SetBackgroundTopColor(@background@);
 Window.SetBackgroundBottomColor(@background@);
 
 password_active = 0;
-password_completed = 0;
 bullet_count = 0;
 
 logo.image = Image("@logo@");
@@ -27,11 +26,8 @@ for (i = 0; i < max_bullets; i++) {
   bullet.sprites[i] = Sprite(bullet.image);
   bullet.sprites[i].SetOpacity(0);
 }
-progress.image = Image("progress_box.png");
-progress.sprite = Sprite(progress.image);
 progress.fill = Image("progress_bar.png");
 progress.fill_sprite = Sprite();
-progress.sprite.SetOpacity(0);
 progress.fill_sprite.SetOpacity(0);
 message.sprite = Sprite();
 
@@ -67,8 +63,7 @@ fun layout() {
     bullet.sprites[i].SetPosition(Math.Int(cx - (visible * 14 - 6) / 2 + i * 14), entry.y + 24, 12);
     bullet.sprites[i].SetOpacity(password_active && i < visible);
   }
-  progress.sprite.SetPosition(Math.Int(cx - progress.image.GetWidth() / 2), Math.Int(cy + 64), 1);
-  progress.fill_sprite.SetPosition(Math.Int(cx - progress.image.GetWidth() / 2), Math.Int(cy + 64), 2);
+  progress.fill_sprite.SetPosition(Math.Int(cx - progress.fill.GetWidth() / 2), Math.Int(cy + 64), 2);
   logo.sprite.SetPosition(Math.Int(cx - logo.image.GetWidth() / 2), Window.GetY() + Window.GetHeight() - logo.image.GetHeight() - @logoBottom@, 1);
   # Reserve room for feedback on short displays instead of overlapping the logo.
   if (logo.sprite.GetY() < box.y + box.image.GetHeight() + 72 && (password_active || message.sprite.GetOpacity() > 0))
@@ -90,12 +85,10 @@ fun dialog_opacity(opacity) {
 
 fun display_password_callback(text, bullets) {
   global.password_active = 1;
-  global.password_completed = 0;
   global.bullet_count = bullets;
   if (!text) text = @passwordHint@;
   global.prompt.image = fit_text(text, 368, 40, @textFont@);
   prompt.sprite.SetImage(prompt.image);
-  progress.sprite.SetOpacity(0);
   progress.fill_sprite.SetOpacity(0);
   dialog_opacity(1);
   layout();
@@ -103,21 +96,19 @@ fun display_password_callback(text, bullets) {
 
 fun display_normal_callback() {
   global.password_active = 0;
-  global.password_completed = 1;
   global.bullet_count = 0;
   dialog_opacity(0);
 }
 
 fun progress_callback(duration, fraction) {
-  # Keep progress hidden throughout password entry and retries.
-  if (password_active || !password_completed || fraction <= 0) {
-    progress.sprite.SetOpacity(0);
+  # Password entry owns the center of the screen. Outside it, boot progress is
+  # valid even when Plymouth never displayed a password dialog.
+  if (password_active || fraction <= 0) {
     progress.fill_sprite.SetOpacity(0);
     return;
   }
   local.width = Math.Max(1, Math.Int(progress.fill.GetWidth() * Math.Min(1, fraction)));
   progress.fill_sprite.SetImage(progress.fill.Scale(width, progress.fill.GetHeight()));
-  progress.sprite.SetOpacity(1);
   progress.fill_sprite.SetOpacity(1);
   layout();
 }
